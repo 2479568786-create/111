@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>数字人口播页 · 能量驱动口型</title>
+<style>
+  html,body{margin:0;padding:0;background:#0b1014;overflow:hidden}
+  canvas{display:block;width:1920px;height:1080px}
+</style>
+</head>
+<body>
+<canvas id="stage" width="1920" height="1080"></canvas>
+<script src="config.js"></script>
+<script>
+(() => {
+  const W = 1920, H = 1080;
+  const cv = document.getElementById('stage');
+  const ctx = cv.getContext('2d');
+
+  // 可被 config.json 覆盖：口型锚点、肤色、是否用真实头像图
+  const DEFAULT_CFG = {
+    mode: 'procedural',            // procedural | image
+    avatarImage: '',               // mode=image 时用，例如 avatar.png（透明底半身像）
+    palette: { skin:'#f0cdb4', skinShade:'#dcae92', hair:'#20242b', shirt:'#2b3a4a',
+               bg1:'#101820', bg2:'#1b2733', accent:'#39d0a8' },
+    mouth: { x:0.5, y:0.53, w:0.11, h:0.012 },   // 归一化锚点（image 模式标定用）
+    eyes:  { y:0.40, lx:0.435, rx:0.565, r:0.035 } // image 模式画眨眼用
+  };
+
+  let CFG = DEFAULT_CFG;
+  let ENV = { fps:30, frames:[], blinks:[], duration:0 };
+
+  const mouthOpen = t => {
+    const f = ENV.frames;
+    if (!f || !f.length) return 0;
+    const i = Math.floor(t * ENV.fps);
+    return f[Math.max(0, Math.min(f.length - 1, i))] || 0;
+  };
+  const blinking = t => (ENV.blinks || []).some(b => t >= b && t < b + 0.14);
+
+  function bg() {
+    const g = ctx.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, CFG.palette.bg1);
+    g.addColorStop(1, CFG.palette.bg2);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.save(); ctx.globalAlpha = 0.05; ctx.strokeStyle = '#7fe6cd'; ctx.lineWidth = 1;
+    for (let x = 0; x < W; x += 80) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+    for (let y = 0; y < H; y += 80) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+    ctx.restore();
+  }
+
+  function drawProcedural(t, open) {
+    const bob = -8 * Math.sin(t * Math.PI * 1.2) - 14 * open;
+    const breathe = 1 + 0.004 * Math.sin(t * Math.PI * 0.8);
+    ctx.save();
+    ctx.translate(W / 2, H + 40); ctx.scale(breathe, breathe); ctx.translate(-W / 2, -H - 40);
+
+    // 肩/躯干
+    ctx.fillStyle = CFG.palette.shirt;
+    ctx.beginPath();
+    ctx.ellipse(W / 2, H + 260, 520, 330, 0, Math.PI, 0, true);
+    ctx.fill();
+    // 脖子
+    ctx.fillStyle = CFG.palette.skinShade;
+    ctx.fillRect(W / 2 - 78, H - 430, 156, 170);
+
+    ctx.translate(0, bob);
+    // 头
+    ctx.fillStyle = CFG.palette.skin;
+    ctx.beginPath(); ctx.ellipse(W / 2, H - 560, 250, 300, 0, 0, Math.PI * 2); ctx.fill();
+    // 耳
+    ctx.beginPath(); ctx.ellipse(W / 2 - 248, H - 545, 34, 56, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(W / 2 + 248, H - 545, 34, 56, 0, 0, Math.PI * 2); ctx.fill();
+    // 头发
+    ctx.fillStyle = CFG.palette.hair;
+    ctx.beginPath();
+    ctx.moveTo(W / 2 - 255, H - 640);
+    ctx.quadraticCurveTo(W / 2 - 210, H - 900, W / 2, H - 905);
+    ctx.quadraticCurveTo(W / 2 + 210, H - 900, W / 2 + 255, H - 640);
+    ctx.quadraticCurveTo(W / 2 + 150, H - 760, W / 2, H - 758);
+    ctx.quadraticCurveTo(W / 2 - 150, H - 760, W / 2 - 255, H - 640);
+    ctx.fill();
+
+    // 眉毛（说话时抬一点）
+    const browLift = -6 * open;
+    ctx.strokeStyle = CFG.palette.hair; ctx.lineWidth = 15; ctx.lineCap = 'round';
+    [[-115, -1], [115, 1]].forEach(([dx, dir]) => {
+      ctx.beginPath();
+      ctx.moveTo(W / 2 + dx - 58 * dir, H - 655 + browLift + 2);
+      ctx.quadraticCurveTo(W / 2 + dx, H - 675 + browLift, W / 2 + dx + 58 * dir, H - 655 + browLift + 2);
+      ctx.stroke();
+    });
+
+    // 眼（眨眼时压扁成线；瞳孔有微小确定性漂移）
+    const eyeY = H - 590, eyeX = 118, eyeR = 40;
+    const eyeMoveX = 5 * Math.sin(t * 0.7) + 2.5 * Math.sin(t * 1.9);
+    const eyeMoveY = 3 * Math.sin(t * 0.5);
+    [-1, 1].forEach(dir => {
+      const cx = W / 2 + dir * eyeX;
+      if (blinking(t)) {
+        ctx.strokeStyle = '#3a2f28'; ctx.lineWidth = 7;
+        ctx.beginPath(); ctx.moveTo(cx - eyeR, eyeY); ctx.lineTo(cx + eyeR, eyeY); ctx.stroke();
+        return;
+      }
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.ellipse(cx, eyeY, eyeR, eyeR * 0.72, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#20242b';
+      ctx.beginPath(); ctx.arc(cx + eyeMoveX, eyeY + eyeMoveY, 17, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(cx + eyeMoveX + 6, eyeY + eyeMoveY - 6, 5, 0, Math.PI * 2); ctx.fill();
+    });
+
+    // 嘴：开合幅度 = 包络；开口大时出现上排牙
+    const mh = 10 + 92 * open, mw = 132 + 26 * open;
+    const my = H - 470;
+    ctx.fillStyle = '#6d2a2a';
+    ctx.beginPath(); ctx.ellipse(W / 2, my, mw / 2, mh / 2, 0, 0, Math.PI * 2); ctx.fill();
+    if (open > 0.30) {
+      ctx.fillStyle = '#f7f3ee';
+      ctx.beginPath();
+      ctx.ellipse(W / 2, my - mh * 0.30, mw * 0.36, mh * 0.13, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.strokeStyle = '#b9776f'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.ellipse(W / 2, my, mw / 2, mh / 2, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+
+  let img = null;
+  function drawImageMode(t, open) {
+    if (!img) return;
+    const s = Math.min(W / img.width, H / img.height);
+    const w = img.width * s, h = img.height * s;
+    ctx.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
+    // 口型覆盖层（锚点在 config.json 标定）
+    const mh = CFG.mouth.h * H * (0.4 + 2.2 * open);
+    const mw = CFG.mouth.w * W;
+    const mx = CFG.mouth.x * W, my = CFG.mouth.y * H;
+    ctx.fillStyle = 'rgba(90,28,28,0.82)';
+    ctx.beginPath(); ctx.ellipse(mx, my, mw / 2, mh / 2, 0, 0, Math.PI * 2); ctx.fill();
+  }
+
+  window.film = {
+    get duration() { return ENV.duration || 8; },
+    ready: boot(),
+    frame(t) {
+      const open = mouthOpen(t);
+      bg();
+      if (CFG.mode === 'image') drawImageMode(t, open);
+      else drawProcedural(t, open);
+      // 右下角小标识（模板占位，成片删）
+      ctx.save();
+      ctx.globalAlpha = 0.55; ctx.fillStyle = '#7fe6cd';
+      ctx.font = '22px "Microsoft YaHei", sans-serif';
+      ctx.fillText(`digital-human · t=${t.toFixed(2)}s · open=${open.toFixed(2)}`, 40, H - 40);
+      ctx.restore();
+    }
+  };
+
+  async function boot() {
+    // 配置走 config.js（window.AVATAR_CFG），不发网络请求：look/render 下不产生 404 噪声
+    if (window.AVATAR_CFG) {
+      const j = window.AVATAR_CFG;
+      CFG = Object.assign({}, DEFAULT_CFG, j, { palette: Object.assign({}, DEFAULT_CFG.palette, (j && j.palette) || {}) });
+    }
+    const r2 = await fetch('envelope.json', { cache: 'no-store' });
+    ENV = await r2.json();
+    if (CFG.mode === 'image' && CFG.avatarImage) {
+      img = await new Promise((res, rej) => {
+        const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = CFG.avatarImage;
+      });
+    }
+    const qs = new URLSearchParams(location.search);
+    if (qs.has('t')) window.film.frame(parseFloat(qs.get('t')));
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+# ---- 敏感/密钥 ----
+keys/
+*.pem
+*.key
+
+# ---- 媒体文件 ----
+*.mp4
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.wav
+*.mp3
+
+# ---- 日志与备份 ----
+debug.log
+*.log
+*.bak
+*.bak-*
+
+# ---- 运行时缓存 ----
+__pycache__/
+*.pyc
+.npm-cache/
+node_modules/
+tmp/
+
+# ---- ERP 源码（手搓电商系统，非视频流水线）----
+erp_src/
+erp_*.py
+erp_*.sh
+p*.sh
+q*.sh
+probe*.sh
+try_keys.py
+ssh_erp.py
+
+# ---- 单集产出/样本数据 ----
+董仲舒_*
+E0_*
+项目状态_*
+预检*
+质检报告_*
+配音听诊*
+分镜表_*
+
+# ---- 素材/实验/其他目录 ----
+频道B素材/
+董仲舒_素材包/
+董仲舒_样本素材/
+样本原文/
+产线A_样本/
+产线A_样本_v3/
+schemas/
+assets/
+ozon-ext/
+openfilm-lab/
+.film/
+tts-lab/
+
+# ---- 调试脚本 ----
+_fix*.py
+_probe*.py
+_patch*.py
+_state*.py
+_upd_state.py
+_clean_*.py
+_contact_sheet.py
+_extract_docx.py
+_mk_sample_state.py
+_split_phases.py
+_qa*.py
+_qa*.json
+_fast_asr.json
+_om_arch.md
+_om_explainer.yaml
+_openmontage_readme.md
