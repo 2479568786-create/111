@@ -76,3 +76,17 @@ _fast_asr.json
 _om_arch.md
 _om_explainer.yaml
 _openmontage_readme.md
+_mk_ass*.py
+render_test.mjs
+scan-buildplate.js
+shot01.html
+film.html
+
+# ---- 测试/临时产物目录 ----
+channelB/_archive_tts/
+channelB/_selftest/
+channelB/motion_demo/
+channelB/剪映交付包_测试/
+*.tmp
+*.zip
+ERP经营数据分析报告.md

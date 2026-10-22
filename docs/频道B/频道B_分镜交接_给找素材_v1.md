@@ -23,17 +23,17 @@
 ## 二、工具与命令（工作区根目录，直接用）
 
 ```bash
-python 逐句卡点表.py <集号>_scene_plan.json --out <集号>_逐句卡点对照表.csv     # 一句一条字幕+预计起止+对应镜号
-python 导出分镜表.py <集号>_逐句卡点对照表.csv <集号>_scene_plan.json \
+python scripts/逐句卡点表.py <集号>_scene_plan.json --out <集号>_逐句卡点对照表.csv     # 一句一条字幕+预计起止+对应镜号
+python scripts/导出分镜表.py <集号>_逐句卡点对照表.csv <集号>_scene_plan.json \
        --overlay <集号>_叠加层清单.csv --out <集号>_分镜表.csv                 # 出 7 列分镜表
 ```
 `叠加层清单.csv` 两列：`触发句,类型,要点数据`——用句子关键词匹配到分镜行，命中不到的会打 ⚠ 提示。
 
-`scene_plan.json` 用 `分镜导出.py` 从 md 生成（`picture` 写画面槽），改完 md 后重跑一次即可。
+`scene_plan.json` 用 `scripts/分镜导出.py` 从 md 生成（`picture` 写画面槽），改完 md 后重跑一次即可。
 
 ## 三、交给视频制作前自检
 
-1. 分镜表**一句一行**，行数 = 纯口播句数（`check_shot_table.py` 必须 PASS）；
+1. 分镜表**一句一行**，行数 = 纯口播句数（`channelB/check_shot_table.py` 必须 PASS）；
 2. `类型` 四值之外没有别的值；`要点数据` 里没有「待补」以外的不明数值；
 3. 分镜表文件名固定 `<集号>_分镜表.csv`，与纯口播同前缀。
 
